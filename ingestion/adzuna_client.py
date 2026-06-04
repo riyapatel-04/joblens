@@ -18,7 +18,27 @@ ROLES = [
     "machine learning engineer"
 ]
 
-LOCATIONS = ["boston", "new york", "san francisco", "chicago", "seattle", "austin"]
+LOCATIONS = [
+    # Northeast
+    "boston", "new york", "philadelphia", 
+    "washington dc", "baltimore", "pittsburgh",
+
+    # Southeast
+    "atlanta", "miami", "charlotte", "raleigh", 
+    "orlando", "nashville", "tampa",
+
+    # Midwest
+    "chicago", "detroit", "columbus", 
+    "indianapolis", "minneapolis", "kansas city",
+
+    # Southwest
+    "dallas", "austin", "houston", 
+    "phoenix", "denver", "san antonio",
+
+    # West Coast
+    "san francisco", "los angeles", "seattle", 
+    "san diego", "portland"
+]
 
 def fetch_jobs(role: str, location: str, page: int = 1, results_per_page: int = 50):
     params = {
