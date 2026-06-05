@@ -64,6 +64,24 @@ st.markdown("""
         padding: 1rem;
         box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
+    @media (max-width: 768px) {
+        h1 {
+            font-size: 1.5rem !important;
+        }
+        h2 {
+            font-size: 1.2rem !important;
+        }
+        p {
+            font-size: 0.9rem !important;
+        }
+        .stTabs [data-baseweb="tab"] {
+            font-size: 0.7rem !important;
+            padding: 6px 8px !important;
+        }
+        svg {
+            display: none !important;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
