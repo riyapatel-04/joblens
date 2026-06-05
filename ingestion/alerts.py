@@ -142,3 +142,36 @@ if __name__ == "__main__":
     # Test
     jobs = get_new_jobs("data engineer", "boston")
     print(f"Found {len(jobs)} new jobs")
+
+def run_daily_alerts():
+    """Run daily job alerts for all subscribers."""
+    conn = get_snowflake_connection()
+    cursor = conn.cursor()
+    
+    # Get all active subscribers
+    cursor.execute("""
+        SELECT EMAIL, ROLE, LOCATION 
+        FROM JOB_ALERTS 
+        WHERE IS_ACTIVE = TRUE
+    """)
+    subscribers = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    print(f"📧 Found {len(subscribers)} active subscribers")
+    
+    sent = 0
+    for email, role, location in subscribers:
+        jobs = get_new_jobs(role, location, hours=24)
+        if jobs:
+            success = send_alert_email(email, role, location, jobs)
+            if success:
+                sent += 1
+                print(f"✅ Alert sent to {email} — {len(jobs)} jobs for {role} in {location}")
+        else:
+            print(f"⏭️ No new jobs for {email} ({role} in {location})")
+    
+    print(f"📧 Total alerts sent: {sent}")
+
+if __name__ == "__main__":
+    run_daily_alerts()

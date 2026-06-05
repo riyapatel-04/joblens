@@ -33,7 +33,10 @@ jobs:
           SNOWFLAKE_DATABASE: ${{ secrets.SNOWFLAKE_DATABASE }}
           SNOWFLAKE_SCHEMA: ${{ secrets.SNOWFLAKE_SCHEMA }}
           SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
         run: |
           python ingestion/adzuna_client.py
           python ingestion/validator.py
           python ingestion/snowflake_loader.py
+          python ingestion/alerts.py

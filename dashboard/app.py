@@ -175,7 +175,7 @@ st.divider()
 active_df = df[df['status'] == 'active'] if 'status' in df.columns else df
 
 # Tabs
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9 = st.tabs([
     "📊 Market Overview",
     "🔥 Skills Intelligence",
     "💰 Salary Insights",
@@ -183,7 +183,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "🎯 Personal Fit Score",
     "📄 Resume Gap Analyzer",
     "🔔 Job Alerts",
-    "🚀 Funded Startups"
+    "🚀 Funded Startups",
+    "💼 Job Listings"
 ])
 
 # Tab 1 - Market Overview
@@ -816,3 +817,122 @@ with tab8:
         )
     else:
         st.info("No funding news found right now. Check back later!")
+
+# Tab 9 - Job Listings
+with tab9:
+    st.subheader("💼 Active Job Board")
+    st.markdown("Search and filter all active job postings — directly apply from here!")
+
+    # Filters row 1
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        filter_role = st.selectbox(
+            "🎯 Role",
+            ["All Roles"] + list(active_df['search_role'].unique()),
+            key="listing_role"
+        )
+    with col2:
+        filter_city = st.selectbox(
+            "📍 City",
+            ["All Cities"] + list(active_df['search_location'].unique()),
+            key="listing_city"
+        )
+    with col3:
+        filter_company = st.text_input(
+            "🏢 Company",
+            placeholder="e.g. Amazon, Google...",
+            key="listing_company"
+        )
+
+    # Filters row 2
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        filter_keyword = st.text_input(
+            "🔍 Keyword in Job Title",
+            placeholder="e.g. Senior, Lead, Junior...",
+            key="listing_keyword"
+        )
+    with col2:
+        salary_options = ["Any Salary", "Above $50k", "Above $80k", "Above $100k", "Above $150k"]
+        filter_salary = st.selectbox("💰 Minimum Salary", salary_options, key="listing_salary")
+    with col3:
+        sort_options = ["Latest First", "Salary High to Low", "Salary Low to High", "Company A-Z"]
+        sort_by = st.selectbox("📊 Sort By", sort_options, key="listing_sort")
+
+    # Apply filters
+    filtered_jobs = active_df.copy()
+
+    if filter_role != "All Roles":
+        filtered_jobs = filtered_jobs[filtered_jobs['search_role'] == filter_role]
+    if filter_city != "All Cities":
+        filtered_jobs = filtered_jobs[filtered_jobs['search_location'] == filter_city]
+    if filter_company:
+        filtered_jobs = filtered_jobs[
+            filtered_jobs['company'].str.lower().str.contains(filter_company.lower(), na=False)
+        ]
+    if filter_keyword:
+        filtered_jobs = filtered_jobs[
+            filtered_jobs['title'].str.lower().str.contains(filter_keyword.lower(), na=False)
+        ]
+    if filter_salary == "Above $50k":
+        filtered_jobs = filtered_jobs[filtered_jobs['salary_min'] >= 50000]
+    elif filter_salary == "Above $80k":
+        filtered_jobs = filtered_jobs[filtered_jobs['salary_min'] >= 80000]
+    elif filter_salary == "Above $100k":
+        filtered_jobs = filtered_jobs[filtered_jobs['salary_min'] >= 100000]
+    elif filter_salary == "Above $150k":
+        filtered_jobs = filtered_jobs[filtered_jobs['salary_min'] >= 150000]
+
+    # Sort
+    if sort_by == "Salary High to Low":
+        filtered_jobs = filtered_jobs.sort_values('salary_max', ascending=False)
+    elif sort_by == "Salary Low to High":
+        filtered_jobs = filtered_jobs.sort_values('salary_min', ascending=True)
+    elif sort_by == "Company A-Z":
+        filtered_jobs = filtered_jobs.sort_values('company', ascending=True)
+
+    # Results count
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("🔍 Jobs Found", f"{len(filtered_jobs):,}")
+    with col2:
+        companies_found = filtered_jobs['company'].nunique()
+        st.metric("🏢 Companies", f"{companies_found:,}")
+    with col3:
+        has_salary = filtered_jobs[filtered_jobs['salary_min'] > 0]
+        avg_sal = f"${has_salary['salary_min'].mean():,.0f}" if len(has_salary) > 0 else "N/A"
+        st.metric("💰 Avg Min Salary", avg_sal)
+
+    st.divider()
+
+    # Build display dataframe
+    display_df = filtered_jobs[['title', 'company', 'search_location', 'search_role', 'salary_min', 'salary_max', 'redirect_url']].copy()
+    display_df.columns = ['Job Title', 'Company', 'City', 'Role', 'Min Salary', 'Max Salary', 'Apply']
+
+    display_df['Min Salary'] = display_df['Min Salary'].apply(
+        lambda x: f"${int(x):,}" if pd.notna(x) and x > 0 else "N/A"
+    )
+    display_df['Max Salary'] = display_df['Max Salary'].apply(
+        lambda x: f"${int(x):,}" if pd.notna(x) and x > 0 else "N/A"
+    )
+
+    st.dataframe(
+        display_df,
+        column_config={
+            "Job Title": st.column_config.TextColumn("💼 Job Title", width="large"),
+            "Company": st.column_config.TextColumn("🏢 Company", width="medium"),
+            "City": st.column_config.TextColumn("📍 City", width="medium"),
+            "Role": st.column_config.TextColumn("🎯 Role", width="medium"),
+            "Min Salary": st.column_config.TextColumn("💰 Min", width="small"),
+            "Max Salary": st.column_config.TextColumn("💰 Max", width="small"),
+            "Apply": st.column_config.LinkColumn(
+                "🔗 Apply",
+                display_text="Apply Now",
+                width="small"
+            ),
+        },
+        hide_index=True,
+        use_container_width=True,
+        height=600
+    )
+
