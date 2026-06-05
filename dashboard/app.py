@@ -135,13 +135,14 @@ st.divider()
 active_df = df[df['status'] == 'active'] if 'status' in df.columns else df
 
 # Tabs
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "📊 Market Overview",
     "🔥 Skills Intelligence",
     "💰 Salary Insights",
     "🤖 AI Chatbot",
     "🎯 Personal Fit Score",
-    "📄 Resume Gap Analyzer"
+    "📄 Resume Gap Analyzer",
+    "🔔 Job Alerts"
 ])
 
 # Tab 1 - Market Overview
@@ -670,3 +671,60 @@ with tab6:
 
     elif analyze_gap_btn and not resume_text:
         st.warning("Please upload or paste your resume first!")
+
+# Tab 7 - Job Alerts
+with tab7:
+    st.subheader("🔔 Job Alerts")
+    st.markdown("Get daily email alerts when new jobs matching your preferences are posted!")
+
+    st.divider()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### 📧 Subscribe to Job Alerts")
+        alert_email = st.text_input(
+            "Your email address",
+            placeholder="you@email.com"
+        )
+        alert_role = st.selectbox(
+            "Role you're interested in",
+            list(active_df['search_role'].unique()),
+            key="alert_role"
+        )
+        alert_city = st.selectbox(
+            "City you're targeting",
+            list(active_df['search_location'].unique()),
+            key="alert_city"
+        )
+        subscribe_btn = st.button("🔔 Subscribe to Alerts", type="primary")
+
+        if subscribe_btn:
+            if not alert_email:
+                st.warning("Please enter your email!")
+            else:
+                from ingestion.alerts import save_alert_subscription
+                success, message = save_alert_subscription(
+                    alert_email, alert_role, alert_city
+                )
+                if success:
+                    st.success(f"✅ {message} You'll receive daily alerts for **{alert_role}** jobs in **{alert_city}**!")
+                else:
+                    st.warning(f"⚠️ {message}")
+
+    with col2:
+        st.markdown("#### ℹ️ How It Works")
+        st.markdown("""
+        **1. Subscribe** — Enter your email, target role and city
+
+        **2. Daily Pipeline Runs** — Every morning at 8am our pipeline fetches fresh job postings
+
+        **3. You Get Notified** — If new jobs match your preferences, you get an email with:
+        - Job title and company
+        - Location and salary range
+        - Direct link to apply
+
+        **4. Stay Ahead** — Get notified before other candidates even see the posting!
+        """)
+
+        st.info("📬 Emails are sent daily at 8am EST when new matching jobs are found.")
