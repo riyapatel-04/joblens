@@ -3,7 +3,7 @@ import smtplib
 import snowflake.connector
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -21,7 +21,7 @@ def get_snowflake_connection():
 def get_new_jobs(role: str, location: str, hours: int = 24):
     conn = get_snowflake_connection()
     cursor = conn.cursor()
-    cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=hours)).isoformat()
     query = f"""
         SELECT TITLE, COMPANY, LOCATION, REDIRECT_URL, SALARY_MIN, SALARY_MAX
         FROM RAW_JOBS
@@ -82,7 +82,9 @@ def send_alert_email(to_email: str, role: str, location: str, jobs: list):
 
         msg.attach(MIMEText(html_content, 'html'))
 
-        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.ehlo()
+            server.starttls()
             server.login(
                 os.getenv("GMAIL_USER"),
                 os.getenv("GMAIL_APP_PASSWORD")
@@ -129,7 +131,7 @@ def save_alert_subscription(email: str, role: str, location: str):
 
     cursor.execute(f"""
         INSERT INTO JOB_ALERTS (EMAIL, ROLE, LOCATION, CREATED_AT, IS_ACTIVE)
-        VALUES ('{email}', '{role}', '{location}', '{datetime.utcnow().isoformat()}', TRUE)
+        VALUES ('{email}', '{role}', '{location}', '{datetime.now(timezone.utc).isoformat()}', TRUE)
     """)
     conn.commit()
     cursor.close()
