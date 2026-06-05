@@ -19,7 +19,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: pip install requests python-dotenv pydantic pandas azure-storage-blob snowflake-connector-python sendgrid
+        run: pip install requests python-dotenv pydantic pandas azure-storage-blob snowflake-connector-python sendgrid resend
 
       - name: Run ingestion
         env:
@@ -34,6 +34,7 @@ jobs:
           SNOWFLAKE_WAREHOUSE: ${{ secrets.SNOWFLAKE_WAREHOUSE }}
           SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
         run: |
           python ingestion/adzuna_client.py
           python ingestion/validator.py

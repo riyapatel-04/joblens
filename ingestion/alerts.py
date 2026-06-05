@@ -1,8 +1,7 @@
 import os
 import json
 import snowflake.connector
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+import resend
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -91,8 +90,13 @@ def send_alert_email(to_email: str, role: str, location: str, jobs: list):
     )
     
     try:
-        sg = SendGridAPIClient(os.getenv("SENDGRID_API_KEY"))
-        sg.send(message)
+        resend.api_key = os.getenv("RESEND_API_KEY")
+        resend.Emails.send({
+            "from": "JobLens <onboarding@resend.dev>",
+            "to": to_email,
+            "subject": f"🔍 JobLens Alert: {len(jobs)} new {role} jobs in {location}!",
+            "html": html_content
+        })
         print(f"✅ Alert sent to {to_email}")
         return True
     except Exception as e:
