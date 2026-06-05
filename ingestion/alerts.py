@@ -1,6 +1,8 @@
 import os
+import smtplib
 import snowflake.connector
-import resend
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
@@ -73,13 +75,24 @@ def send_alert_email(to_email: str, role: str, location: str, jobs: list):
     """
 
     try:
-        resend.api_key = os.getenv("RESEND_API_KEY")
-        resend.Emails.send({
-            "from": "JobLens <onboarding@resend.dev>",
-            "to": to_email,
-            "subject": f"🔍 JobLens Alert: {len(jobs)} new {role} jobs in {location}!",
-            "html": html_content
-        })
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = f"🔍 JobLens Alert: {len(jobs)} new {role} jobs in {location}!"
+        msg['From'] = os.getenv("GMAIL_USER")
+        msg['To'] = to_email
+
+        msg.attach(MIMEText(html_content, 'html'))
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
+            server.login(
+                os.getenv("GMAIL_USER"),
+                os.getenv("GMAIL_APP_PASSWORD")
+            )
+            server.sendmail(
+                os.getenv("GMAIL_USER"),
+                to_email,
+                msg.as_string()
+            )
+
         print(f"✅ Alert sent to {to_email}")
         return True
     except Exception as e:
