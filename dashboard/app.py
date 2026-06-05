@@ -19,10 +19,50 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-    .main-header {
-        font-size: 2.5rem;
-        font-weight: bold;
+    .stApp {
+        background-color: #f0f7ff;
+    }
+    .stTabs [data-baseweb="tab-list"] {
+        background-color: #dce8f5;
+        border-radius: 12px;
+        padding: 6px;
+        gap: 8px;
+        justify-content: space-between;
+        width: 100%;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: #eef2f7;
+        border-radius: 8px;
+        padding: 8px 16px;
+        font-weight: 600;
+        font-size: 0.85rem;
         color: #1f77b4;
+        border: none;
+        flex: 1;
+        text-align: center;
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #1f77b4 !important;
+        color: white !important;
+        border-radius: 8px;
+    }
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #c8dff5;
+        color: #1f77b4;
+    }
+    .stTabs [data-baseweb="tab-highlight"] {
+        display: none;
+    }
+    [data-testid="stMetricValue"] {
+        color: #1f77b4;
+        font-weight: 700;
+    }
+    [data-testid="metric-container"] {
+        background-color: white;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -135,14 +175,15 @@ st.divider()
 active_df = df[df['status'] == 'active'] if 'status' in df.columns else df
 
 # Tabs
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "📊 Market Overview",
     "🔥 Skills Intelligence",
     "💰 Salary Insights",
     "🤖 AI Chatbot",
     "🎯 Personal Fit Score",
     "📄 Resume Gap Analyzer",
-    "🔔 Job Alerts"
+    "🔔 Job Alerts",
+    "🚀 Funded Startups"
 ])
 
 # Tab 1 - Market Overview
@@ -728,3 +769,50 @@ with tab7:
         """)
 
         st.info("📬 Emails are sent daily at 8am EST when new matching jobs are found.")
+
+# Tab 8 - Funded Startups
+
+with tab8:
+    st.subheader("🚀 Recently Funded Startups — Hiring Opportunities")
+    st.markdown("*Companies that recently raised funding are actively hiring. Get in early!*")
+
+    with st.spinner("Fetching latest funding news..."):
+        from ingestion.startups import fetch_funded_startups, match_startups_with_jobs
+        startups = fetch_funded_startups(max_results=20)
+        startups = match_startups_with_jobs(startups, active_df)
+
+    if startups:
+        filtered = [s for s in startups if s['is_data_related']]
+
+        startup_data = []
+        for startup in filtered:
+            google_link = f"https://news.google.com/search?q={startup['company'].replace(' ', '+')}+funding"
+            startup_data.append({
+                "Company": startup['company'],
+                "Amount": startup['amount'],
+                "Round": startup['round'],
+                "Domain": startup['domain'],
+                "News": google_link
+            })
+
+        startup_df = pd.DataFrame(startup_data)
+
+        st.dataframe(
+            startup_df,
+            column_config={
+                "Company": st.column_config.TextColumn("🏢 Company", width="medium"),
+                "Amount": st.column_config.TextColumn("💰 Amount", width="small"),
+                "Round": st.column_config.TextColumn("📊 Round", width="small"),
+                "Domain": st.column_config.TextColumn("🔧 Domain", width="medium"),
+                "News": st.column_config.LinkColumn(
+                    "📰 News",
+                    display_text="Read News",
+                    width="small"
+                ),
+            },
+            hide_index=True,
+            use_container_width=True,
+            height=500
+        )
+    else:
+        st.info("No funding news found right now. Check back later!")
