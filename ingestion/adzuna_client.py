@@ -1,7 +1,7 @@
 import requests
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -63,7 +63,7 @@ def fetch_all_jobs():
                 for job in jobs:
                     job["search_role"] = role
                     job["search_location"] = location
-                    job["ingested_at"] = datetime.utcnow().isoformat()
+                    job["ingested_at"] = datetime.now(timezone.utc).isoformat()
                 all_jobs.extend(jobs)
                 print(f"✅ {role} | {location} → {len(jobs)} jobs")
             except Exception as e:

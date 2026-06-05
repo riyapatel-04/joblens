@@ -1,7 +1,7 @@
 import snowflake.connector
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,7 +19,7 @@ def get_snowflake_connection():
 def load_jobs_to_snowflake(validated_jobs: list):
     conn = get_snowflake_connection()
     cursor = conn.cursor()
-    now = datetime.utcnow().isoformat()
+    now = datetime.now(timezone.utc).isoformat()
 
     # Get all current active IDs from Snowflake
     cursor.execute("SELECT ID FROM RAW_JOBS WHERE STATUS = 'active'")
