@@ -1,5 +1,6 @@
 import os
 import smtplib
+import traceback
 import snowflake.connector
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -82,6 +83,9 @@ def send_alert_email(to_email: str, role: str, location: str, jobs: list):
 
         msg.attach(MIMEText(html_content, 'html'))
 
+        print(f"📧 Attempting to send email to {to_email}...")
+        print(f"📧 Using Gmail user: {os.getenv('GMAIL_USER')}")
+
         with smtplib.SMTP('smtp.gmail.com', 587) as server:
             server.ehlo()
             server.starttls()
@@ -99,6 +103,7 @@ def send_alert_email(to_email: str, role: str, location: str, jobs: list):
         return True
     except Exception as e:
         print(f"❌ Failed to send email: {e}")
+        traceback.print_exc()
         return False
 
 def save_alert_subscription(email: str, role: str, location: str):
