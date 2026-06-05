@@ -1,5 +1,4 @@
 import os
-import json
 import snowflake.connector
 import resend
 from datetime import datetime, timedelta
@@ -18,12 +17,9 @@ def get_snowflake_connection():
     )
 
 def get_new_jobs(role: str, location: str, hours: int = 24):
-    """Get jobs added in the last 24 hours matching role and location."""
     conn = get_snowflake_connection()
     cursor = conn.cursor()
-    
     cutoff = (datetime.utcnow() - timedelta(hours=hours)).isoformat()
-    
     query = f"""
         SELECT TITLE, COMPANY, LOCATION, REDIRECT_URL, SALARY_MIN, SALARY_MAX
         FROM RAW_JOBS
@@ -40,17 +36,16 @@ def get_new_jobs(role: str, location: str, hours: int = 24):
     return rows
 
 def send_alert_email(to_email: str, role: str, location: str, jobs: list):
-    """Send job alert email via SendGrid."""
     if not jobs:
         return False
-    
+
     jobs_html = ""
     for job in jobs:
         title, company, loc, url, sal_min, sal_max = job
         salary = ""
         if sal_min and sal_max:
             salary = f"<span style='color: #2e7d32;'>💰 ${int(sal_min):,} - ${int(sal_max):,}</span>"
-        
+
         jobs_html += f"""
         <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 15px; margin: 10px 0;">
             <h3 style="color: #1f77b4; margin: 0 0 5px 0;">{title}</h3>
@@ -60,7 +55,7 @@ def send_alert_email(to_email: str, role: str, location: str, jobs: list):
             <a href="{url}" style="display: inline-block; margin-top: 8px; padding: 6px 14px; background: #1f77b4; color: white; border-radius: 4px; text-decoration: none; font-size: 0.85rem;">View Job →</a>
         </div>
         """
-    
+
     html_content = f"""
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: #1f77b4; padding: 20px; border-radius: 8px 8px 0 0;">
@@ -68,27 +63,15 @@ def send_alert_email(to_email: str, role: str, location: str, jobs: list):
             <p style="color: #e0e0e0; margin: 5px 0 0 0;">Your daily job market update</p>
         </div>
         <div style="padding: 20px; background: #f9f9f9;">
-            <p style="color: #444;">Hi there! Here are <strong>{len(jobs)} new {role} jobs</strong> in <strong>{location}</strong> posted in the last 24 hours:</p>
+            <p style="color: #444;">Hi! Here are <strong>{len(jobs)} new {role} jobs</strong> in <strong>{location}</strong>:</p>
             {jobs_html}
-            <div style="margin-top: 20px; padding: 15px; background: #e8f4fd; border-radius: 8px;">
-                <p style="margin: 0; color: #1f77b4; font-size: 0.9rem;">
-                    💡 <strong>Tip:</strong> Visit JobLens dashboard for full market insights, salary benchmarks, and skill gap analysis!
-                </p>
-            </div>
         </div>
         <div style="padding: 15px; background: #eee; border-radius: 0 0 8px 8px; text-align: center;">
             <p style="margin: 0; color: #888; font-size: 0.8rem;">Powered by JobLens — Job Market Intelligence</p>
         </div>
     </div>
     """
-    
-    message = Mail(
-        from_email=os.getenv("SENDER_EMAIL"),
-        to_emails=to_email,
-        subject=f"🔍 JobLens Alert: {len(jobs)} new {role} jobs in {location}!",
-        html_content=html_content
-    )
-    
+
     try:
         resend.api_key = os.getenv("RESEND_API_KEY")
         resend.Emails.send({
@@ -104,10 +87,9 @@ def send_alert_email(to_email: str, role: str, location: str, jobs: list):
         return False
 
 def save_alert_subscription(email: str, role: str, location: str):
-    """Save alert subscription to Snowflake."""
     conn = get_snowflake_connection()
     cursor = conn.cursor()
-    
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS JOB_ALERTS (
             EMAIL VARCHAR,
@@ -117,22 +99,21 @@ def save_alert_subscription(email: str, role: str, location: str):
             IS_ACTIVE BOOLEAN DEFAULT TRUE
         )
     """)
-    
-    # Check if already subscribed
+
     cursor.execute(f"""
-        SELECT COUNT(*) FROM JOB_ALERTS 
-        WHERE EMAIL = '{email}' 
-        AND ROLE = '{role}' 
+        SELECT COUNT(*) FROM JOB_ALERTS
+        WHERE EMAIL = '{email}'
+        AND ROLE = '{role}'
         AND LOCATION = '{location}'
         AND IS_ACTIVE = TRUE
     """)
-    
+
     count = cursor.fetchone()[0]
     if count > 0:
         cursor.close()
         conn.close()
         return False, "Already subscribed!"
-    
+
     cursor.execute(f"""
         INSERT INTO JOB_ALERTS (EMAIL, ROLE, LOCATION, CREATED_AT, IS_ACTIVE)
         VALUES ('{email}', '{role}', '{location}', '{datetime.utcnow().isoformat()}', TRUE)
@@ -142,39 +123,27 @@ def save_alert_subscription(email: str, role: str, location: str):
     conn.close()
     return True, "Subscribed successfully!"
 
-if __name__ == "__main__":
-    # Test
-    jobs = get_new_jobs("data engineer", "boston")
-    print(f"Found {len(jobs)} new jobs")
-
 def run_daily_alerts():
-    """Run daily job alerts for all subscribers."""
     conn = get_snowflake_connection()
     cursor = conn.cursor()
-    
-    # Get all active subscribers
-    cursor.execute("""
-        SELECT EMAIL, ROLE, LOCATION 
-        FROM JOB_ALERTS 
-        WHERE IS_ACTIVE = TRUE
-    """)
+    cursor.execute("SELECT EMAIL, ROLE, LOCATION FROM JOB_ALERTS WHERE IS_ACTIVE = TRUE")
     subscribers = cursor.fetchall()
     cursor.close()
     conn.close()
-    
+
     print(f"📧 Found {len(subscribers)} active subscribers")
-    
+
     sent = 0
     for email, role, location in subscribers:
         jobs = get_new_jobs(role, location, hours=24)
+        print(f"Found {len(jobs)} new jobs")
         if jobs:
             success = send_alert_email(email, role, location, jobs)
             if success:
                 sent += 1
-                print(f"✅ Alert sent to {email} — {len(jobs)} jobs for {role} in {location}")
         else:
-            print(f"⏭️ No new jobs for {email} ({role} in {location})")
-    
+            print(f"⏭️ No new jobs for {email}")
+
     print(f"📧 Total alerts sent: {sent}")
 
 if __name__ == "__main__":
